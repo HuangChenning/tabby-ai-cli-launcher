@@ -22,8 +22,11 @@ lets you add, edit, remove, and test-launch tools, no YAML editing required.
 **AI panel.** A second toolbar button opens a chat panel docked to the side
 of the tab you're actually looking at. A dropdown lets you switch between
 `claude`, `codex`, `agent` (Cursor Agent), and `pi` — whatever's in the same
-tool list as the launcher — plus a free-text field for the model. All four
-run through each CLI's own non-interactive, machine-readable output mode
+tool list as the launcher — plus a second dropdown for the model: real
+models fetched from `agent --list-models` / `pi --list-models` for those two,
+a curated list of `claude`'s documented aliases (it has no listing command),
+and a free-text field for anything else. All four run through each CLI's own
+non-interactive, machine-readable output mode
 (`claude -p --output-format stream-json`, `codex exec --json`, `agent -p
 --output-format stream-json`, `pi -p --mode json`) rather than the regular
 interactive mode, which is a full TUI with its own screen buffer that can't

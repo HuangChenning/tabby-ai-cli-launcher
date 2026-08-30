@@ -12,6 +12,12 @@ export interface NormalizedEvent {
     sessionId?: string
 }
 
+export interface ModelOption {
+    /** The exact string to pass as --model. */
+    id: string
+    label: string
+}
+
 export interface AgentAdapter {
     /** Matches AiCliTool.command (e.g. 'claude') so a configured tool can be mapped to its adapter. */
     command: string
@@ -19,6 +25,12 @@ export interface AgentAdapter {
     buildArgs(opts: AgentRunOptions): string[]
     /** Parses one already-JSON.parse()'d line of the tool's stdout. */
     parseEvent(json: any): NormalizedEvent
+    /** Hardcoded choices for a CLI that documents its model aliases but has no listing command. */
+    staticModels?: ModelOption[]
+    /** Argv to list this tool's available models at runtime (e.g. `['--list-models']`). */
+    listModelsArgs?(): string[]
+    /** Parses the raw (non-JSON) stdout of listModelsArgs(). */
+    parseModelList?(stdout: string): ModelOption[]
 }
 
 function textFrom (...candidates: unknown[]): string | undefined {
@@ -62,6 +74,17 @@ export const claudeAdapter: AgentAdapter = {
         }
         return { kind: 'ignore', sessionId: json.session_id }
     },
+    // claude has no `--list-models`; these are the aliases `claude --help`
+    // documents for --model ('fable', 'opus', 'sonnet' verbatim - 'haiku'
+    // added as the well-known fourth tier, slightly less certain than the
+    // other three since it isn't spelled out in the truncated help text seen
+    // while building this).
+    staticModels: [
+        { id: 'sonnet', label: 'sonnet (最新 Sonnet)' },
+        { id: 'opus', label: 'opus (最新 Opus)' },
+        { id: 'fable', label: 'fable (最新 Fable)' },
+        { id: 'haiku', label: 'haiku (最新 Haiku)' },
+    ],
 }
 
 /**
@@ -101,10 +124,13 @@ export const codexAdapter: AgentAdapter = {
 }
 
 /**
- * INFERRED, NOT VERIFIED. `agent --help` (Cursor Agent) shows a flag surface
- * almost identical to Claude Code's (`-p --output-format stream-json
- * --resume --model`), which is the whole reason this reuses claudeAdapter's
- * parser as a first guess rather than writing a new one blind.
+ * Chat flow is INFERRED, NOT VERIFIED: `agent --help` (Cursor Agent) shows a
+ * flag surface almost identical to Claude Code's (`-p --output-format
+ * stream-json --resume --model`), which is why this reuses claudeAdapter's
+ * event parser as a first guess rather than writing a new one blind.
+ *
+ * Model listing IS verified: `agent --list-models` really does run without
+ * login and prints "Available models" followed by `id - label` lines.
  */
 export const cursorAgentAdapter: AgentAdapter = {
     command: 'agent',
@@ -119,14 +145,29 @@ export const cursorAgentAdapter: AgentAdapter = {
         return args
     },
     parseEvent: claudeAdapter.parseEvent,
+    listModelsArgs: () => ['--list-models'],
+    parseModelList (stdout) {
+        return stdout.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.includes(' - '))
+            .map(line => {
+                const idx = line.indexOf(' - ')
+                return { id: line.slice(0, idx).trim(), label: line.slice(idx + 3).trim() }
+            })
+    },
 }
 
 /**
- * INFERRED, NOT VERIFIED. `pi --help` documents `--mode json` without ever
- * calling it a *streaming* format the way the others say "stream-json" -
- * it may print one JSON object at the end instead of one per line.
- * agentRunner.service.ts covers that by also trying to parse whatever is
- * left in the buffer when the process exits.
+ * Chat flow is INFERRED, NOT VERIFIED: `pi --help` documents `--mode json`
+ * without ever calling it a *streaming* format the way the others say
+ * "stream-json" - it may print one JSON object at the end instead of one
+ * per line. agentRunner.service.ts covers that by also trying to parse
+ * whatever is left in the buffer when the process exits.
+ *
+ * Model listing IS verified: `pi --list-models` really does run without
+ * login and prints a `provider  model  context  max-out  thinking  images`
+ * table; pi's own `--model` docs say it takes a `provider/id` pattern, hence
+ * joining the first two columns with `/`.
  */
 export const piAdapter: AgentAdapter = {
     command: 'pi',
@@ -147,6 +188,15 @@ export const piAdapter: AgentAdapter = {
         }
         const text = textFrom(json.text, json.message, json.response, json.content)
         return { kind: text ? 'text' : 'ignore', text, sessionId }
+    },
+    listModelsArgs: () => ['--list-models'],
+    parseModelList (stdout) {
+        const lines = stdout.split('\n').filter(line => line.trim())
+        // First line is the column header ("provider  model  context  ...").
+        return lines.slice(1)
+            .map(line => line.trim().split(/\s{2,}/))
+            .filter(parts => parts.length >= 2 && parts[0] && parts[1])
+            .map(([provider, model]) => ({ id: `${provider}/${model}`, label: `${provider}/${model}` }))
     },
 }
 

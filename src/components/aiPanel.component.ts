@@ -1,9 +1,9 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core'
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core'
 import { Subscription } from 'rxjs'
 import { ConfigService } from 'tabby-core'
 import { BaseTerminalTabComponent } from 'tabby-terminal'
 import { AgentRunnerService } from '../chat/agentRunner.service'
-import { ADAPTERS_BY_COMMAND, NormalizedEvent } from '../chat/agentAdapters'
+import { ADAPTERS_BY_COMMAND, ModelOption, NormalizedEvent } from '../chat/agentAdapters'
 import { AiCliTool, DEFAULT_TOOLS } from '../api'
 import { getTabCwd, getTabScrollback } from '../chat/terminalContext'
 
@@ -28,12 +28,19 @@ interface ChatMessage {
                 </button>
             </div>
             <div class="panel-picker">
-                <select class="form-control form-control-sm" [(ngModel)]="selectedToolId"
+                <select class="form-control form-control-sm tool-picker" [(ngModel)]="selectedToolId"
                     (ngModelChange)="onToolChange()" [disabled]="isLoading">
                     <option *ngFor="let t of tools" [value]="t.id">{{ t.name }}</option>
                 </select>
-                <input class="form-control form-control-sm" [(ngModel)]="model"
-                    placeholder="模型(留空用默认)" [disabled]="isLoading">
+                <select class="form-control form-control-sm model-picker" *ngIf="models.length > 0"
+                    [(ngModel)]="model" [disabled]="isLoading">
+                    <option value="">默认模型</option>
+                    <option *ngFor="let m of models" [value]="m.id">{{ m.label }}</option>
+                </select>
+                <input class="form-control form-control-sm model-picker" *ngIf="models.length === 0"
+                    [(ngModel)]="model"
+                    [placeholder]="loadingModels ? '正在获取模型列表…' : '模型(留空用默认)'"
+                    [disabled]="isLoading || loadingModels">
             </div>
             <div class="panel-messages">
                 <div class="msg" *ngFor="let m of messages" [class.msg-user]="m.role === 'user'"
@@ -88,11 +95,11 @@ interface ChatMessage {
             padding: .5rem .75rem;
             border-bottom: 1px solid var(--theme-border, rgba(255,255,255,.1));
         }
-        .panel-picker select {
+        .panel-picker .tool-picker {
             flex: 0 0 auto;
             width: 40%;
         }
-        .panel-picker input {
+        .panel-picker .model-picker {
             flex: 1 1 auto;
             min-width: 0;
         }
@@ -132,7 +139,7 @@ interface ChatMessage {
         }
     `],
 })
-export class AiCliPanelComponent {
+export class AiCliPanelComponent implements OnInit {
     @Input() tab!: BaseTerminalTabComponent<any>
     @Output() closed = new EventEmitter<void>()
 
@@ -142,9 +149,13 @@ export class AiCliPanelComponent {
     lastMessage: ChatMessage | null = null
     model = ''
     selectedToolId = ''
+    models: ModelOption[] = []
+    loadingModels = false
 
     private sessionId: string | null = null
     private sub: Subscription | null = null
+    /** Bumped on every tool switch so a slow, stale listModels() response can't overwrite a newer one. */
+    private modelsRequestId = 0
 
     constructor (
         private config: ConfigService,
@@ -154,6 +165,29 @@ export class AiCliPanelComponent {
         if (first) {
             this.selectedToolId = first.id
         }
+    }
+
+    ngOnInit (): void {
+        void this.loadModels()
+    }
+
+    private async loadModels (): Promise<void> {
+        const tool = this.selectedTool
+        const adapter = tool && ADAPTERS_BY_COMMAND[tool.command]
+        this.models = []
+        this.model = ''
+        if (!adapter) {
+            return
+        }
+        const requestId = ++this.modelsRequestId
+        this.loadingModels = true
+        const models = await this.runner.listModels(adapter)
+        if (requestId !== this.modelsRequestId) {
+            // A newer tool switch has since started its own request.
+            return
+        }
+        this.models = models
+        this.loadingModels = false
     }
 
     get tools (): AiCliTool[] {
@@ -182,6 +216,7 @@ export class AiCliPanelComponent {
         this.sessionId = null
         this.runner.cancel()
         this.isLoading = false
+        void this.loadModels()
     }
 
     /**

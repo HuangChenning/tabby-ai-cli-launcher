@@ -19,7 +19,9 @@
 
 **AI 辅助面板。** 第二个工具栏按钮会在你正在看的这个标签页一侧打开一个聊天面板,面板
 里有个下拉框可以在 `claude`、`codex`、`agent`(Cursor Agent)、`pi` 之间切换——就是
-和启动器共用的那份工具列表——旁边还有一个自由输入模型名字的文本框。这四个都是走各自
+和启动器共用的那份工具列表——旁边还有第二个下拉框选模型:`agent`/`pi` 是实际调用
+`--list-models` 拿到的真实模型列表,`claude` 是它文档里写明的几个别名(它没有列表
+命令),其他情况下退化成自由输入的文本框。这四个都是走各自
 CLI 自带的非交互、机器可读输出模式(`claude -p --output-format stream-json`、`codex
 exec --json`、`agent -p --output-format stream-json`、`pi -p --mode json`),而不是
 平时交互式的那个模式——交互式的是一个完整的 TUI 程序,自己接管了整个屏幕的绘制,没

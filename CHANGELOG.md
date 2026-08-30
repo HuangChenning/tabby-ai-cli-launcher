@@ -7,15 +7,20 @@ All notable changes to this project are documented here. Format follows
 
 ### Added
 
-- Agent and model picker in the AI panel: a dropdown to switch between the
-  configured tools (`claude`, `codex`, `agent`/Cursor Agent, `pi` by
-  default), and a free-text field for the model, via a per-tool `AgentAdapter`
-  (`src/chat/agentAdapters.ts`) instead of hardcoding `claude`.
-  Only the `claude` adapter has been run against real output; `codex`,
-  `agent`, and `pi` are implemented from their `--help` text and are
-  unverified — see the README's Limitations section.
-- Switching the panel's agent starts a new conversation (different tools
-  don't share a session store).
+- Agent picker in the AI panel: a dropdown to switch between the configured
+  tools (`claude`, `codex`, `agent`/Cursor Agent, `pi` by default), via a
+  per-tool `AgentAdapter` (`src/chat/agentAdapters.ts`) instead of
+  hardcoding `claude`. Only the `claude` adapter's chat protocol has been
+  run against real output; `codex`, `agent`, and `pi` are implemented from
+  their `--help` text and are unverified — see the README's Limitations
+  section.
+- Model picker: a dropdown of real models for `agent` and `pi` (fetched via
+  each CLI's own `--list-models`, verified against real output) and a
+  curated list of documented aliases for `claude` (`--help` doesn't offer a
+  listing command); falls back to a free-text field for tools with neither.
+- Switching the panel's agent starts a new conversation and re-fetches that
+  tool's model list (different tools don't share a session store or model
+  catalog).
 
 ### Fixed
 
@@ -24,6 +29,9 @@ All notable changes to this project are documented here. Format follows
   the tab, including the injected panel, and could swallow the keystroke or
   steal focus back to the terminal. Every keydown in the textarea now stops
   propagation, and Enter is ignored while an IME composition is in progress.
+- Same issue for mouse events: clicking the panel's dropdowns or message
+  list could bubble into the same terminal-level handlers. Click, mousedown,
+  dblclick, and wheel now stop propagating from the panel's root element too.
 
 ## [0.1.0] - 2026-08-30
 
