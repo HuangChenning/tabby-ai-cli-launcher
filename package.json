@@ -1,7 +1,7 @@
 {
   "name": "tabby-ai-cli-launcher",
   "version": "0.1.0",
-  "description": "Launch local AI CLI tools (Claude Code, Codex, etc.) from a Tabby toolbar button, with a settings page to configure the list.",
+  "description": "Launch local AI CLI tools from a Tabby toolbar button, plus a Claude Code chat panel docked to the current terminal tab.",
   "keywords": [
     "tabby-plugin",
     "tabby",
@@ -40,6 +40,7 @@
     "rxjs": "^7.3.0",
     "tabby-core": "^1.0.231-nightly.0",
     "tabby-settings": "^1.0.231-nightly.0",
+    "tabby-terminal": "^1.0.231-nightly.0",
     "ts-loader": "^9.4.0",
     "typescript": "^4.9.5",
     "webpack": "^5.24.4",

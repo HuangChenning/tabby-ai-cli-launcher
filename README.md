@@ -8,15 +8,25 @@ in a new tab, with a settings page to configure the list.
 
 ## Features
 
-- One toolbar button ("AI CLI") that opens Tabby's built-in fuzzy selector
-  (the same one behind the profile picker) listing your configured tools.
-  Picking one opens it in a new local terminal tab.
-- A settings page (Settings → AI CLI) to add, edit, remove, and test-launch
-  tools — no YAML editing required.
-- Each tool launches through your login shell (`$SHELL --login -i -c`), so it
-  sees the same `PATH` as your interactive terminal (important for tools
-  installed via nvm/fnm/asdf or a package manager, since Tabby itself is a GUI
-  app and does not inherit your shell's `PATH` when launched from the Dock).
+**Quick launch.** One toolbar button ("AI CLI") that opens Tabby's built-in
+fuzzy selector (the same one behind the profile picker) listing your
+configured tools. Picking one opens it in a new, independent local terminal
+tab. A settings page (Settings → AI CLI) lets you add, edit, remove, and
+test-launch tools — no YAML editing required.
+
+**AI panel.** A second toolbar button opens a chat panel docked to the side
+of the *current* terminal tab, backed by `claude -p --output-format
+stream-json` (Claude Code's non-interactive mode — the regular interactive
+`claude` is a full TUI and can't be turned into chat bubbles). Every message
+is sent together with that tab's working directory and recent scrollback, so
+you can ask things like "what did that error mean" without pasting it in.
+Each terminal tab gets its own independent panel and conversation.
+
+Both features launch commands through your login shell (`$SHELL --login -i
+-c`), so they see the same `PATH` as your interactive terminal (important for
+tools installed via nvm/fnm/asdf or a package manager, since Tabby itself is
+a GUI app and does not inherit your shell's `PATH` when launched from the
+Dock).
 
 ## Install
 

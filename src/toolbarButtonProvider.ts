@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core'
-import { ToolbarButtonProvider, ToolbarButton, ConfigService, SelectorService, SelectorOption } from 'tabby-core'
+import { ToolbarButtonProvider, ToolbarButton, ConfigService, SelectorService, SelectorOption, AppService, SplitTabComponent } from 'tabby-core'
+import { BaseTerminalTabComponent } from 'tabby-terminal'
 import { AiCliTool, DEFAULT_TOOLS } from './api'
 import { AiCliLauncherService } from './launcher.service'
-import { AI_CLI_ICON } from './icons'
+import { AiCliPanelDecorator } from './decorators/aiPanelDecorator'
+import { AI_CLI_ICON, AI_CLI_PANEL_ICON } from './icons'
 
 /**
  * `ToolbarButton.submenu` is declared in tabby-core's typings but this
@@ -18,6 +20,8 @@ export class AiCliToolbarButtonProvider extends ToolbarButtonProvider {
         private config: ConfigService,
         private selector: SelectorService,
         private launcher: AiCliLauncherService,
+        private app: AppService,
+        private panels: AiCliPanelDecorator,
     ) {
         super()
     }
@@ -31,7 +35,27 @@ export class AiCliToolbarButtonProvider extends ToolbarButtonProvider {
                     void this.pickAndLaunch()
                 },
             },
+            {
+                icon: AI_CLI_PANEL_ICON,
+                title: 'Toggle AI CLI panel',
+                click: () => {
+                    this.togglePanel()
+                },
+            },
         ]
+    }
+
+    private togglePanel (): void {
+        const tab = this.focusedTerminalTab()
+        if (tab) {
+            this.panels.toggle(tab)
+        }
+    }
+
+    private focusedTerminalTab (): BaseTerminalTabComponent<any> | null {
+        const active = this.app.activeTab
+        const tab = active instanceof SplitTabComponent ? active.getFocusedTab() : active
+        return tab instanceof BaseTerminalTabComponent ? tab : null
     }
 
     private getTools (): AiCliTool[] {
