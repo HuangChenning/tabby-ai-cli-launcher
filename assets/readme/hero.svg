@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="320" viewBox="0 0 1200 320"
+     role="img" aria-labelledby="hero-title hero-desc">
+  <title id="hero-title">tabby-ai-cli-launcher</title>
+  <desc id="hero-desc">A Tabby plugin: a toolbar button that launches local AI CLI tools in a new tab, and a chat panel docked to the current terminal tab, backed by claude -p.</desc>
+
+  <rect width="1200" height="320" rx="22" fill="#15130f"/>
+  <rect x="0.5" y="0.5" width="1199" height="319" rx="21.5" fill="none" stroke="#2c2820" stroke-width="1"/>
+
+  <g id="title-block" transform="translate(64 76)">
+    <text x="0" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" font-weight="600" letter-spacing="2" fill="#8a8272">TABBY PLUGIN</text>
+
+    <text x="0" y="56" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="21" font-weight="500" fill="#6f6a5c">tabby/</text>
+    <text x="0" y="56" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="52" font-weight="700" fill="#f1ede4" transform="translate(90 0)">ai-cli-launcher</text>
+
+    <text x="0" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="23" font-weight="400" fill="#c9c3b4">Launch local AI CLIs from the toolbar.</text>
+    <text x="0" y="146" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="23" font-weight="400" fill="#c9c3b4">Chat with Claude about the tab you're in.</text>
+
+    <g transform="translate(0 178)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" letter-spacing="1">
+      <rect x="0" y="-20" width="60" height="28" rx="14" fill="#241f16" stroke="#4a3f28" stroke-width="1"/>
+      <text x="30" y="-1" text-anchor="middle" fill="#d9a45c">MIT</text>
+      <rect x="72" y="-20" width="82" height="28" rx="14" fill="#241f16" stroke="#4a3f28" stroke-width="1"/>
+      <text x="113" y="-1" text-anchor="middle" fill="#d9a45c">v0.1.0</text>
+    </g>
+  </g>
+
+  <g id="project-proof" transform="translate(730 46)">
+    <rect x="0" y="0" width="410" height="228" rx="12" fill="#0f0e0b" stroke="#2c2820" stroke-width="1"/>
+
+    <rect x="0" y="0" width="410" height="30" rx="12" fill="#1a1712"/>
+    <rect x="0" y="18" width="410" height="12" fill="#1a1712"/>
+    <circle cx="20" cy="15" r="5" fill="#4a4536"/>
+    <circle cx="38" cy="15" r="5" fill="#4a4536"/>
+    <circle cx="56" cy="15" r="5" fill="#4a4536"/>
+    <text x="205" y="19" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#7d7666">~/project — zsh</text>
+
+    <line x1="255" y1="30" x2="255" y2="228" stroke="#2c2820" stroke-width="1"/>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#615c4d">
+      <text x="16" y="56">$ npm run build</text>
+      <text x="16" y="78" fill="#4d7a5a">webpack compiled</text>
+      <text x="16" y="108">$ █</text>
+    </g>
+
+    <g transform="translate(255 30)">
+      <text x="17" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" letter-spacing="1" fill="#8a8272">AI CLI PANEL</text>
+
+      <rect x="60" y="42" width="82" height="26" rx="8" fill="#241f16"/>
+      <text x="101" y="59" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="11" fill="#c9c3b4">git diff?</text>
+
+      <rect x="12" y="80" width="118" height="44" rx="8" fill="#221b0e" stroke="#4a3f28" stroke-width="1"/>
+      <text x="22" y="98" font-family="-apple-system, sans-serif" font-size="11" fill="#e3ceac">3 files changed,</text>
+      <text x="22" y="113" font-family="-apple-system, sans-serif" font-size="11" fill="#e3ceac">no staged tests.</text>
+    </g>
+  </g>
+</svg>

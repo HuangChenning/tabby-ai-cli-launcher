@@ -1,26 +1,32 @@
-# tabby-ai-cli-launcher
+<img src="assets/readme/hero.svg" alt="tabby-ai-cli-launcher —— 从工具栏启动本地 AI CLI,或就当前会话向 Claude 提问" width="100%">
 
-[English](./README.md)
+[English](./README.md) · MIT · [Tabby](https://github.com/Eugeny/tabby) 插件
 
-一个 [Tabby](https://github.com/Eugeny/tabby) 插件,用来在新标签页里一键启动本地已安装的
-AI 命令行工具(Claude Code、Codex,或任何其他命令行 Agent),并提供设置页面来配置工具列表。
+## 这是什么
 
-## 功能
+一个 [Tabby](https://github.com/Eugeny/tabby) 插件,包含两个相互独立的功能:一个工具栏
+按钮用来在新标签页里启动本地已安装的 AI 命令行工具(Claude Code、Codex,或任何其他
+命令行 Agent),另一个是停靠在**当前**终端标签页一侧的聊天面板,后端是 `claude -p`。
 
-**快速启动。** 工具栏上的一个"AI CLI"图标按钮,点击后弹出 Tabby 内置的模糊搜索选择器
-(和 Profile 选择器共用同一套 UI),列出你配置的工具,选中后会在一个新的、独立的本地
-终端标签页里启动——和当前会话没有任何关联。一个设置页(设置 → AI CLI)可以直接增删改
-工具、并一键试跑,不需要手动编辑 YAML。
+## 工作原理
 
-**AI 辅助面板。** 工具栏上第二个按钮会在**当前**终端标签页的一侧打开一个聊天面板,
-后端是 `claude -p --output-format stream-json`(Claude Code 的非交互模式——平时交互
-式的 `claude` 是一个完整的 TUI 程序,没法直接改造成聊天气泡界面)。每条消息都会自动
-带上当前标签页的工作目录和最近的滚动缓冲区文本一起发送,所以可以直接问"刚才那个报错
-是什么意思"而不用手动复制粘贴。每个终端标签页都有自己独立的面板和对话。
+<img src="assets/readme/mechanism.svg" alt="快速启动:工具栏按钮打开一个列出已配置工具的模糊搜索选择器,选中后经登录 shell 打开新终端标签页。AI 面板:第二个工具栏按钮把聊天面板挂载到当前活动标签页上,面板运行 claude -p --output-format stream-json,并把该标签页的工作目录和最近的滚动缓冲区文本作为上下文一起发送。" width="100%">
+
+**快速启动。** 工具栏上的"AI CLI"按钮会弹出 Tabby 内置的模糊搜索选择器(和 Profile
+选择器共用同一套 UI),列出你配置的工具,选中后会在一个新的、独立的本地终端标签页里
+启动——和你当时所在的标签页没有任何关联。设置页(设置 → AI CLI)可以直接增删改工具、
+并一键试跑,不需要手动编辑 YAML。
+
+**AI 辅助面板。** 第二个工具栏按钮会在你正在看的这个标签页一侧打开一个聊天面板,后端
+是 `claude -p --output-format stream-json`——Claude Code 的非交互模式。(平时交互式的
+`claude` 是一个完整的 TUI 程序,自己接管了整个屏幕的绘制,没有办法可靠地把它的输出
+改造成聊天气泡界面,这正是要单独走非交互模式、而不是直接把交互式终端嵌进来的原因。)
+每条消息都会自动带上该标签页的工作目录和最近的滚动缓冲区文本一起发送,所以可以直接问
+"刚才那个报错是什么意思"而不用手动复制粘贴。每个终端标签页都有自己独立的面板和对话。
 
 两个功能都会经过登录 shell(`$SHELL --login -i -c`)启动命令,这样它们能拿到和交互式
-终端一致的 `PATH`。这一点很重要:Tabby 本身是从 Dock/Finder 启动的 GUI 程序,不会继承
-~/.zshrc 等 rc 文件里通过 nvm/fnm/asdf 或包管理器设置的 `PATH`。
+终端一致的 `PATH`——这一点很重要:Tabby 本身是从 Dock/Finder 启动的 GUI 程序,不会
+继承 ~/.zshrc 等 rc 文件里通过 nvm/fnm/asdf 或包管理器设置的 `PATH`。
 
 ## 安装
 
@@ -51,6 +57,10 @@ npm install tabby-ai-cli-launcher
 
 默认包含 `claude`、`codex`、`agent`、`pi` 四项,按你机器上实际安装的工具增删/修改即可。
 
+AI 面板还会从同一个配置命名空间(原始配置文件里的 `aiCliLauncher.chat`)读取两项设置:
+`contextLines`(带多少行滚动缓冲区,默认 `50`)和 `panelWidthPercent`(面板宽度百分比,
+默认 `38`)。
+
 ## 开发
 
 ```bash
@@ -59,6 +69,18 @@ npm run build   # 或者: npm run watch
 ```
 
 然后把这个目录拷贝(或软链接)进 Tabby 的 `plugins/node_modules/` 并重启 Tabby。
+
+## 局限性
+
+- AI 面板的后端目前写死为 `claude`,还没有和启动器共用同一份工具列表。
+- 需要 `claude` 本身已经登录——面板只是原样把 CLI 输出的错误(包括登录提示)显示出来,
+  不会自己处理登录流程。
+- 假定使用 POSIX 登录 shell(`$SHELL`、`--login -i -c`);在 Windows 上未经测试,那里
+  没有这套参数组合的对应概念。
+- 每个聊天气泡是按完整消息一次性填入的,不是逐字流式显示——还没接入
+  `--include-partial-messages`。
+- 面板对话只存在内存里。关闭标签页或重启 Tabby 都会丢失聊天记录(不过底层的 `claude`
+  会话本身仍然可以通过 CLI 的 `claude --resume` 恢复)。
 
 ## 许可证
 
