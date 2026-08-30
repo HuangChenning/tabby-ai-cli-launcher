@@ -1,44 +1,30 @@
 import { Injectable } from '@angular/core'
 import { Observable } from 'rxjs'
 import { spawn, ChildProcess } from 'child_process'
+import { AgentAdapter, AgentRunOptions, NormalizedEvent } from './agentAdapters'
 
 /**
- * One line of `claude -p --output-format stream-json` output. The schema
- * isn't in any package's typings (it's the CLI's own wire format), so this
- * only types the fields this plugin actually reads - verified against a real
- * `claude -p ... --output-format stream-json --verbose` run.
+ * Tabby is a GUI app: launched from the Dock/Finder it does not inherit the
+ * PATH set up by ~/.zshrc (fnm, ~/.local/bin, etc.), so the bare command
+ * would fail with "command not found" even though it works in every
+ * interactive terminal. Routing through `$SHELL --login -i -c` forces the
+ * login shell to source its rc files (the `-i` is required because with
+ * `-c` zsh/bash otherwise only run their *login* startup files, not .zshrc)
+ * before exec'ing the target tool.
  */
-export interface ClaudeStreamEvent {
-    type: string
-    session_id?: string
-    message?: { content?: Array<{ type: string, text?: string }> }
-    result?: string
-    is_error?: boolean
-}
-
 function shellQuote (arg: string): string {
     return `'${arg.replace(/'/g, String.raw`'\''`)}'`
 }
 
-/**
- * Runs `claude -p` (Claude Code's non-interactive mode) through the login
- * shell - see launcher.service.ts for why. Interactive `claude` is a full TUI
- * (alternate screen buffer, cursor positioning) and can't be turned into chat
- * bubbles; `-p --output-format stream-json` is the CLI's own machine-readable
- * mode, built for exactly this.
- */
 @Injectable({ providedIn: 'root' })
-export class ClaudeAgentService {
+export class AgentRunnerService {
     private current: ChildProcess | null = null
 
-    send (prompt: string, opts: { cwd?: string | null, resume?: string | null }): Observable<ClaudeStreamEvent> {
+    run (adapter: AgentAdapter, opts: AgentRunOptions): Observable<NormalizedEvent> {
         this.cancel()
-        return new Observable<ClaudeStreamEvent>(subscriber => {
+        return new Observable<NormalizedEvent>(subscriber => {
             const shell = process.env.SHELL ?? '/bin/zsh'
-            const args = ['claude', '-p', prompt, '--output-format', 'stream-json', '--verbose']
-            if (opts.resume) {
-                args.push('--resume', opts.resume)
-            }
+            const args = [adapter.command, ...adapter.buildArgs(opts)]
             const commandLine = args.map(shellQuote).join(' ')
             const child = spawn(shell, ['--login', '-i', '-c', commandLine], {
                 cwd: opts.cwd || undefined,
@@ -46,19 +32,24 @@ export class ClaudeAgentService {
             this.current = child
 
             let buffer = ''
+            const emit = (line: string) => {
+                const trimmed = line.trim()
+                if (!trimmed) {
+                    return
+                }
+                try {
+                    subscriber.next(adapter.parseEvent(JSON.parse(trimmed)))
+                } catch {
+                    // Non-JSON noise (shell login banners, etc.) - ignore.
+                }
+            }
+
             child.stdout?.on('data', (chunk: Buffer) => {
                 buffer += chunk.toString()
                 let idx = buffer.indexOf('\n')
                 while (idx >= 0) {
-                    const line = buffer.slice(0, idx).trim()
+                    emit(buffer.slice(0, idx))
                     buffer = buffer.slice(idx + 1)
-                    if (line) {
-                        try {
-                            subscriber.next(JSON.parse(line))
-                        } catch {
-                            // Non-JSON noise (shell login banners, etc.) - ignore.
-                        }
-                    }
                     idx = buffer.indexOf('\n')
                 }
             })
@@ -72,6 +63,12 @@ export class ClaudeAgentService {
             child.on('close', code => {
                 if (this.current === child) {
                     this.current = null
+                }
+                // A tool that prints one JSON object with no trailing
+                // newline (rather than NDJSON) would otherwise never get
+                // parsed - try whatever's left in the buffer too.
+                if (buffer.trim()) {
+                    emit(buffer)
                 }
                 if (code !== 0 && code !== null && stderr.trim()) {
                     subscriber.error(new Error(stderr.trim()))

@@ -7,7 +7,7 @@
 A [Tabby](https://github.com/Eugeny/tabby) plugin with two independent
 features: a toolbar button that launches locally installed AI CLI tools
 (Claude Code, Codex, or any other command-line agent) in a new tab, and a
-chat panel docked to the *current* terminal tab, backed by `claude -p`.
+chat panel docked to the *current* terminal tab that can talk to any of them.
 
 ## How it works
 
@@ -20,14 +20,21 @@ relation to whatever tab you were on. A settings page (Settings → AI CLI)
 lets you add, edit, remove, and test-launch tools, no YAML editing required.
 
 **AI panel.** A second toolbar button opens a chat panel docked to the side
-of the tab you're actually looking at, backed by `claude -p --output-format
-stream-json` — Claude Code's non-interactive mode. (The regular interactive
-`claude` is a full TUI with an alternate screen buffer; there's no reliable
-way to turn that into chat bubbles, which is why this exists as a separate
-mode rather than embedding the interactive terminal.) Every message is sent
-together with that tab's working directory and recent scrollback, so you can
-ask things like "what did that error mean" without pasting it in. Each
-terminal tab gets its own independent panel and conversation.
+of the tab you're actually looking at. A dropdown lets you switch between
+`claude`, `codex`, `agent` (Cursor Agent), and `pi` — whatever's in the same
+tool list as the launcher — plus a free-text field for the model. All four
+run through each CLI's own non-interactive, machine-readable output mode
+(`claude -p --output-format stream-json`, `codex exec --json`, `agent -p
+--output-format stream-json`, `pi -p --mode json`) rather than the regular
+interactive mode, which is a full TUI with its own screen buffer that can't
+be turned into chat bubbles. Every message is sent together with that tab's
+working directory and recent scrollback, so you can ask things like "what
+did that error mean" without pasting it in. Each terminal tab gets its own
+independent panel and conversation.
+
+Only `claude`'s output format has actually been run and checked; the other
+three are implemented from each CLI's `--help` text and are unverified —
+if picking one behaves oddly, that's expected until confirmed working.
 
 Both features launch commands through your login shell (`$SHELL --login -i
 -c`), so they see the same `PATH` as your interactive terminal — important
@@ -91,10 +98,15 @@ is no hot reload.
 
 ## Limitations
 
-- The AI panel backend is hardcoded to `claude`; it doesn't (yet) read the
-  same tool list as the launcher.
-- `claude` needs to already be logged in — the panel surfaces whatever error
-  the CLI prints (including an auth prompt) rather than handling login itself.
+- Only the `claude` adapter is verified against real output; `codex`,
+  `agent`, and `pi` are best-effort guesses from `--help` text and may need
+  fixing once actually exercised (see [CHANGELOG.md](./CHANGELOG.md)).
+- Whichever CLI you pick needs to already be logged in — the panel surfaces
+  whatever error the CLI prints (including an auth prompt) rather than
+  handling login itself.
+- Session continuity (multi-turn context via `--resume`) depends on the
+  picked tool echoing back a session id the adapter recognizes; if it
+  doesn't, each message effectively starts a new conversation.
 - Assumes a POSIX login shell (`$SHELL`, `--login -i -c`); untested on
   Windows, where that flag combination doesn't apply.
 - Each chat bubble fills in per completed message, not token-by-token —

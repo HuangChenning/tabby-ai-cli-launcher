@@ -2,7 +2,9 @@ import { Component, Input, Output, EventEmitter } from '@angular/core'
 import { Subscription } from 'rxjs'
 import { ConfigService } from 'tabby-core'
 import { BaseTerminalTabComponent } from 'tabby-terminal'
-import { ClaudeAgentService, ClaudeStreamEvent } from '../chat/claudeAgent.service'
+import { AgentRunnerService } from '../chat/agentRunner.service'
+import { ADAPTERS_BY_COMMAND, NormalizedEvent } from '../chat/agentAdapters'
+import { AiCliTool, DEFAULT_TOOLS } from '../api'
 import { getTabCwd, getTabScrollback } from '../chat/terminalContext'
 
 interface ChatMessage {
@@ -20,21 +22,32 @@ interface ChatMessage {
                 <i class="fas fa-times"></i>
             </button>
         </div>
+        <div class="panel-picker">
+            <select class="form-control form-control-sm" [(ngModel)]="selectedToolId"
+                (ngModelChange)="onToolChange()" [disabled]="isLoading">
+                <option *ngFor="let t of tools" [value]="t.id">{{ t.name }}</option>
+            </select>
+            <input class="form-control form-control-sm" [(ngModel)]="model"
+                placeholder="模型(留空用默认)" [disabled]="isLoading">
+        </div>
         <div class="panel-messages">
             <div class="msg" *ngFor="let m of messages" [class.msg-user]="m.role === 'user'"
                 [class.msg-error]="m.isError">
                 <pre>{{ m.text || (isLoading && m === lastMessage ? '…' : '') }}</pre>
             </div>
+            <div class="msg-hint" *ngIf="!adapterAvailable">
+                "{{ selectedToolName }}" 还没有对应的对话适配器,换一个工具试试。
+            </div>
         </div>
         <div class="panel-input">
-            <textarea rows="2" [(ngModel)]="inputText" placeholder="问 claude 关于当前会话的问题…"
+            <textarea rows="2" [(ngModel)]="inputText" placeholder="问问关于当前会话的问题…"
                 (keydown)="onKeyDown($event)" (keyup)="$event.stopPropagation()"
                 [disabled]="isLoading"></textarea>
             <button class="btn btn-secondary btn-sm" (click)="stop()" *ngIf="isLoading">
                 <i class="fas fa-stop"></i>
             </button>
             <button class="btn btn-primary btn-sm" (click)="send()" *ngIf="!isLoading"
-                [disabled]="!inputText.trim()">
+                [disabled]="!inputText.trim() || !adapterAvailable">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
@@ -53,6 +66,20 @@ interface ChatMessage {
             padding: .5rem .75rem;
             font-weight: 600;
             border-bottom: 1px solid var(--theme-border, rgba(255,255,255,.1));
+        }
+        .panel-picker {
+            display: flex;
+            gap: .5rem;
+            padding: .5rem .75rem;
+            border-bottom: 1px solid var(--theme-border, rgba(255,255,255,.1));
+        }
+        .panel-picker select {
+            flex: 0 0 auto;
+            width: 40%;
+        }
+        .panel-picker input {
+            flex: 1 1 auto;
+            min-width: 0;
         }
         .panel-messages {
             flex: 1 1 auto;
@@ -74,6 +101,10 @@ interface ChatMessage {
         .msg-error pre {
             color: #ff615a;
         }
+        .msg-hint {
+            opacity: .6;
+            font-style: italic;
+        }
         .panel-input {
             display: flex;
             gap: .5rem;
@@ -94,14 +125,49 @@ export class AiCliPanelComponent {
     inputText = ''
     isLoading = false
     lastMessage: ChatMessage | null = null
+    model = ''
+    selectedToolId = ''
 
     private sessionId: string | null = null
     private sub: Subscription | null = null
 
     constructor (
         private config: ConfigService,
-        private agent: ClaudeAgentService,
-    ) { }
+        private runner: AgentRunnerService,
+    ) {
+        const first = this.tools[0]
+        if (first) {
+            this.selectedToolId = first.id
+        }
+    }
+
+    get tools (): AiCliTool[] {
+        const tools = this.config.store.aiCliLauncher?.tools
+        return Array.isArray(tools) && tools.length > 0 ? tools : DEFAULT_TOOLS
+    }
+
+    get selectedTool (): AiCliTool | undefined {
+        return this.tools.find(t => t.id === this.selectedToolId)
+    }
+
+    get selectedToolName (): string {
+        return this.selectedTool?.name ?? this.selectedToolId
+    }
+
+    get adapterAvailable (): boolean {
+        const tool = this.selectedTool
+        return !!tool && !!ADAPTERS_BY_COMMAND[tool.command]
+    }
+
+    onToolChange (): void {
+        // A different tool has its own, unrelated session store - starting
+        // fresh avoids passing one tool's session id to another's --resume.
+        this.messages = []
+        this.lastMessage = null
+        this.sessionId = null
+        this.runner.cancel()
+        this.isLoading = false
+    }
 
     /**
      * Every keystroke here must stop propagating: xterm and Tabby's global
@@ -121,7 +187,9 @@ export class AiCliPanelComponent {
 
     async send (): Promise<void> {
         const text = this.inputText.trim()
-        if (!text || this.isLoading) {
+        const tool = this.selectedTool
+        const adapter = tool && ADAPTERS_BY_COMMAND[tool.command]
+        if (!text || this.isLoading || !tool || !adapter) {
             return
         }
         this.inputText = ''
@@ -140,26 +208,25 @@ export class AiCliPanelComponent {
         this.lastMessage = assistantMsg
         this.isLoading = true
 
-        this.sub = this.agent.send(prompt, { cwd, resume: this.sessionId }).subscribe({
-            next: (event: ClaudeStreamEvent) => {
-                if (event.session_id) {
-                    this.sessionId = event.session_id
+        this.sub = this.runner.run(adapter, {
+            prompt,
+            cwd,
+            resume: this.sessionId,
+            model: this.model.trim() || undefined,
+        }).subscribe({
+            next: (event: NormalizedEvent) => {
+                if (event.sessionId) {
+                    this.sessionId = event.sessionId
                 }
-                if (event.type === 'assistant') {
-                    const chunk = (event.message?.content ?? [])
-                        .filter(p => p.type === 'text' && p.text)
-                        .map(p => p.text)
-                        .join('')
-                    if (chunk) {
-                        assistantMsg.text += (assistantMsg.text ? '\n' : '') + chunk
-                    }
-                } else if (event.type === 'result' && event.is_error && !assistantMsg.text) {
-                    assistantMsg.text = event.result ?? '(no response)'
+                if (event.kind === 'text' && event.text) {
+                    assistantMsg.text += (assistantMsg.text ? '\n' : '') + event.text
+                } else if (event.kind === 'error' && !assistantMsg.text) {
+                    assistantMsg.text = event.text ?? '(no response)'
                     assistantMsg.isError = true
                 }
             },
             error: (err) => {
-                assistantMsg.text = assistantMsg.text || `启动 claude 失败: ${err?.message ?? err}`
+                assistantMsg.text = assistantMsg.text || `启动失败: ${err?.message ?? err}`
                 assistantMsg.isError = true
                 this.isLoading = false
             },
@@ -170,12 +237,12 @@ export class AiCliPanelComponent {
     }
 
     stop (): void {
-        this.agent.cancel()
+        this.runner.cancel()
         this.isLoading = false
     }
 
     close (): void {
-        this.agent.cancel()
+        this.runner.cancel()
         this.sub?.unsubscribe()
         this.closed.emit()
     }
