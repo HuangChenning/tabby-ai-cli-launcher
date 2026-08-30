@@ -37,20 +37,25 @@ Dock.
 
 ## Install
 
-Via Tabby's built-in plugin manager: **Settings → Plugins**, search for
-`ai-cli-launcher`, click **Install**, then restart Tabby.
-
-Or manually:
+Not published to npm — Tabby's plugin manager (Settings → Plugins) can't
+find it by name. Instead, build it and drop it straight into Tabby's plugins
+folder, which is all `npm install <name>` would have done anyway:
 
 ```bash
-cd "$(tabby-config-path)/plugins" 2>/dev/null || cd ~/.config/tabby/plugins
-npm install tabby-ai-cli-launcher
+cd ~/Library/Application\ Support/tabby/plugins/node_modules   # macOS
+# cd ~/.config/tabby/plugins/node_modules                       # Linux
+# cd %APPDATA%\tabby\plugins\node_modules                       # Windows
+
+git clone https://github.com/HuangChenning/tabby-ai-cli-launcher.git
+cd tabby-ai-cli-launcher
+npm install --ignore-scripts
+npm run build
 ```
 
-(On macOS the plugins folder is
-`~/Library/Application Support/tabby/plugins`.)
-
 Restart Tabby afterwards — plugins are only discovered at startup.
+
+To update later: `git pull && npm install --ignore-scripts && npm run build`,
+then restart Tabby again.
 
 ## Configuration
 
@@ -72,13 +77,17 @@ scrollback to attach, default `50`) and `panelWidthPercent` (default `38`).
 
 ## Development
 
+Clone this repo somewhere else (not directly inside Tabby's plugins folder),
+then symlink it in so edits don't need re-copying:
+
 ```bash
 npm install
-npm run build   # or: npm run watch
+npm run watch   # rebuilds dist/index.js on save
+ln -s "$(pwd)" ~/Library/Application\ Support/tabby/plugins/node_modules/tabby-ai-cli-launcher
 ```
 
-Then copy (or symlink) this folder into Tabby's `plugins/node_modules/`
-and restart Tabby.
+Restart Tabby after each rebuild — plugins are only loaded at startup, there
+is no hot reload.
 
 ## Limitations
 

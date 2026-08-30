@@ -30,19 +30,24 @@
 
 ## 安装
 
-通过 Tabby 内置插件管理器:**设置 → 插件**,搜索 `ai-cli-launcher`,点击**安装**,
-然后重启 Tabby。
-
-或者手动安装:
+还没发布到 npm——Tabby 内置插件管理器(设置 → 插件)按名字搜不到它。直接把它构建出来
+放进 Tabby 的插件目录就行,这本来就是 `npm install <name>` 唯一会做的事:
 
 ```bash
-cd "$(tabby-config-path)/plugins" 2>/dev/null || cd ~/.config/tabby/plugins
-npm install tabby-ai-cli-launcher
+cd ~/Library/Application\ Support/tabby/plugins/node_modules   # macOS
+# cd ~/.config/tabby/plugins/node_modules                       # Linux
+# cd %APPDATA%\tabby\plugins\node_modules                       # Windows
+
+git clone https://github.com/HuangChenning/tabby-ai-cli-launcher.git
+cd tabby-ai-cli-launcher
+npm install --ignore-scripts
+npm run build
 ```
 
-(macOS 上插件目录是 `~/Library/Application Support/tabby/plugins`。)
-
 安装后需要重启 Tabby——插件只在启动时被扫描发现。
+
+以后要更新就跑 `git pull && npm install --ignore-scripts && npm run build`,
+再重启一次 Tabby。
 
 ## 配置
 
@@ -63,12 +68,16 @@ AI 面板还会从同一个配置命名空间(原始配置文件里的 `aiCliLau
 
 ## 开发
 
+把这个仓库单独 clone 到别处(不要直接放进 Tabby 的插件目录里),然后软链接过去,
+这样改代码就不用每次手动拷贝了:
+
 ```bash
 npm install
-npm run build   # 或者: npm run watch
+npm run watch   # 每次保存都会重新构建 dist/index.js
+ln -s "$(pwd)" ~/Library/Application\ Support/tabby/plugins/node_modules/tabby-ai-cli-launcher
 ```
 
-然后把这个目录拷贝(或软链接)进 Tabby 的 `plugins/node_modules/` 并重启 Tabby。
+每次重新构建后都要重启 Tabby——插件只在启动时加载,没有热重载。
 
 ## 局限性
 
