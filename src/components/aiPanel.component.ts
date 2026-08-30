@@ -28,7 +28,8 @@ interface ChatMessage {
         </div>
         <div class="panel-input">
             <textarea rows="2" [(ngModel)]="inputText" placeholder="问 claude 关于当前会话的问题…"
-                (keydown.enter)="onEnter($event)" [disabled]="isLoading"></textarea>
+                (keydown)="onKeyDown($event)" (keyup)="$event.stopPropagation()"
+                [disabled]="isLoading"></textarea>
             <button class="btn btn-secondary btn-sm" (click)="stop()" *ngIf="isLoading">
                 <i class="fas fa-stop"></i>
             </button>
@@ -102,10 +103,18 @@ export class AiCliPanelComponent {
         private agent: ClaudeAgentService,
     ) { }
 
-    onEnter (event: Event): void {
-        const keyboardEvent = event as KeyboardEvent
-        if (!keyboardEvent.shiftKey) {
-            keyboardEvent.preventDefault()
+    /**
+     * Every keystroke here must stop propagating: xterm and Tabby's global
+     * hotkey service both listen for keydown on ancestor elements (xterm to
+     * feed its own PTY, the hotkey service via a document-level listener to
+     * match shortcuts), and either can swallow the event or steal focus back
+     * to the terminal before a single character lands in this textarea.
+     */
+    onKeyDown (event: KeyboardEvent): void {
+        event.stopPropagation()
+
+        if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+            event.preventDefault()
             void this.send()
         }
     }
