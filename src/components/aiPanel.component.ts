@@ -16,40 +16,46 @@ interface ChatMessage {
 @Component({
     selector: 'ai-cli-panel',
     template: `
-        <div class="panel-header">
-            <span>AI CLI</span>
-            <button class="btn btn-link btn-sm" (click)="close()" title="关闭">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="panel-picker">
-            <select class="form-control form-control-sm" [(ngModel)]="selectedToolId"
-                (ngModelChange)="onToolChange()" [disabled]="isLoading">
-                <option *ngFor="let t of tools" [value]="t.id">{{ t.name }}</option>
-            </select>
-            <input class="form-control form-control-sm" [(ngModel)]="model"
-                placeholder="模型(留空用默认)" [disabled]="isLoading">
-        </div>
-        <div class="panel-messages">
-            <div class="msg" *ngFor="let m of messages" [class.msg-user]="m.role === 'user'"
-                [class.msg-error]="m.isError">
-                <pre>{{ m.text || (isLoading && m === lastMessage ? '…' : '') }}</pre>
+        <div class="panel-root"
+            (mousedown)="$event.stopPropagation()"
+            (click)="$event.stopPropagation()"
+            (dblclick)="$event.stopPropagation()"
+            (wheel)="$event.stopPropagation()">
+            <div class="panel-header">
+                <span>AI CLI</span>
+                <button class="btn btn-link btn-sm" (click)="close()" title="关闭">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="msg-hint" *ngIf="!adapterAvailable">
-                "{{ selectedToolName }}" 还没有对应的对话适配器,换一个工具试试。
+            <div class="panel-picker">
+                <select class="form-control form-control-sm" [(ngModel)]="selectedToolId"
+                    (ngModelChange)="onToolChange()" [disabled]="isLoading">
+                    <option *ngFor="let t of tools" [value]="t.id">{{ t.name }}</option>
+                </select>
+                <input class="form-control form-control-sm" [(ngModel)]="model"
+                    placeholder="模型(留空用默认)" [disabled]="isLoading">
             </div>
-        </div>
-        <div class="panel-input">
-            <textarea rows="2" [(ngModel)]="inputText" placeholder="问问关于当前会话的问题…"
-                (keydown)="onKeyDown($event)" (keyup)="$event.stopPropagation()"
-                [disabled]="isLoading"></textarea>
-            <button class="btn btn-secondary btn-sm" (click)="stop()" *ngIf="isLoading">
-                <i class="fas fa-stop"></i>
-            </button>
-            <button class="btn btn-primary btn-sm" (click)="send()" *ngIf="!isLoading"
-                [disabled]="!inputText.trim() || !adapterAvailable">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+            <div class="panel-messages">
+                <div class="msg" *ngFor="let m of messages" [class.msg-user]="m.role === 'user'"
+                    [class.msg-error]="m.isError">
+                    <pre>{{ m.text || (isLoading && m === lastMessage ? '…' : '') }}</pre>
+                </div>
+                <div class="msg-hint" *ngIf="!adapterAvailable">
+                    "{{ selectedToolName }}" 还没有对应的对话适配器,换一个工具试试。
+                </div>
+            </div>
+            <div class="panel-input">
+                <textarea rows="2" [(ngModel)]="inputText" placeholder="问问关于当前会话的问题…"
+                    (keydown)="onKeyDown($event)" (keyup)="$event.stopPropagation()"
+                    [disabled]="isLoading"></textarea>
+                <button class="btn btn-secondary btn-sm" (click)="stop()" *ngIf="isLoading">
+                    <i class="fas fa-stop"></i>
+                </button>
+                <button class="btn btn-primary btn-sm" (click)="send()" *ngIf="!isLoading"
+                    [disabled]="!inputText.trim() || !adapterAvailable">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     `,
     styles: [`
@@ -58,6 +64,15 @@ interface ChatMessage {
             flex-direction: column;
             border-left: 1px solid var(--theme-border, rgba(255,255,255,.1));
             font-size: 13px;
+            pointer-events: auto;
+        }
+        .panel-root {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+            -webkit-app-region: no-drag;
         }
         .panel-header {
             display: flex;
